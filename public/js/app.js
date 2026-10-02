@@ -1,3 +1,5 @@
+const API_BASE_URL = ["localhost", "127.0.0.1"].includes(location.hostname) ? "" : "https://sample-erp-rafttaar.onrender.com";
+
 const state = { orders: [], search: "", status: "" };
 
 const $ = (selector) => document.querySelector(selector);
@@ -16,7 +18,7 @@ function escapeHtml(value) {
 }
 
 async function api(path, options = {}) {
-  const response = await fetch(`/api${path}`, {
+  const response = await fetch(`${API_BASE_URL}/api${path}`, {
     headers: { "Content-Type": "application/json" },
     ...options
   });
