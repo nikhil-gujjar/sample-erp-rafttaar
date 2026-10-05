@@ -1,4 +1,4 @@
-const API_BASE_URL = ["localhost", "127.0.0.1"].includes(location.hostname) || location.hostname.endsWith(".ngrok-free.app") ? "" : "https://sample-erp-rafttaar.onrender.com";
+const API_BASE_URL = "";
 
 const state = { orders: [], search: "", status: "", source: "" };
 
