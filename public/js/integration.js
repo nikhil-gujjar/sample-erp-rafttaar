@@ -5,7 +5,7 @@
 const E = escapeHtml;
 // Rafttaar issues every invoice, so the ERP no longer creates or voids its own. The backend routes and
 // invoiceBuilder stay for sellers still on invoiceSource=erp; flip this to bring the UI back.
-const INVOICE_CREATION_UI = false;
+const INVOICE_CREATION_UI = true;
 
 const when = (d) => (d ? new Date(d).toLocaleString("en-IN") : "—");
 const kv = (label, value) => `<div class="detail-line"><span>${E(label)}</span>${value === undefined || value === null || value === "" ? "—" : E(value)}</div>`;
@@ -135,9 +135,34 @@ async function mountRafttaarPanel(order, refreshModal) {
       ),
     void: () =>
       showForm(`<label class="field full">Reason<input name="reason" placeholder="Corrected GST rate"></label>`, (f) => run("invoice/void", { reason: f.reason }, "Invoice voided")),
-    dispatch: () =>
+    dispatch: () => {
+      const addr = order.shippingAddress || {};
+      const cust = order.customer || {};
+      const addrParts = [
+        addr.addressLine1,
+        addr.addressLine2,
+        [addr.city, [addr.state, addr.pincode].filter(Boolean).join(" ")].filter(Boolean).join(", "),
+        addr.country
+      ].filter(Boolean).join(" · ");
+      const recipientParts = [
+        cust.name ? `Recipient: ${E(cust.name)}` : "",
+        cust.phone ? `(📞 ${E(cust.phone)})` : ""
+      ].filter(Boolean).join(" ");
+      const itemsList = (order.items || []).map((it) =>
+        `<div style="font-size:13px; color:#334155; margin-top:3px;">📦 ${E(it.productName || it.title || "Item")}${it.sku || it.productId ? ` <span style="color:#64748b;">(SKU: ${E(it.sku || it.productId)})</span>` : ""} — Qty: <b>${E(it.quantity || 1)}</b></div>`
+      ).join("");
+
       showForm(
-        `<label class="field">Pickup location<select name="locationExternalId"><option value="">Seller default</option>${locations
+        `<div style="background:#f0f8ff; border:1px solid #d0e7ff; border-radius:6px; padding:10px 14px; margin-bottom:10px; width:100%;">
+           <div style="font-weight:600; color:#1877f2; margin-bottom:3px; font-size:13px;">📍 Ship-To Delivery Address:</div>
+           <div style="font-size:13px; color:#334155;">${E(addrParts || "No address provided")}</div>
+           ${recipientParts ? `<div style="font-size:12px; color:#64748b; margin-top:3px;">${recipientParts}</div>` : ""}
+         </div>
+         <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:8px 14px; margin-bottom:14px; width:100%;">
+           <div style="font-size:13px; font-weight:600; color:#475569; margin-bottom:3px;">Items to Dispatch (${(order.items || []).length}):</div>
+           ${itemsList || `<div style="font-size:13px; color:#64748b;">No items</div>`}
+         </div>
+         <label class="field">Pickup location<select name="locationExternalId"><option value="">Seller default</option>${locations
           .filter((l) => l.isActive && l.rafttaar?.id)
           .map((l) => `<option value="${E(l.externalId)}">${E(l.name)} (${E(l.rafttaar.carrierStatus || "?")})</option>`)
           .join("")}</select></label>
@@ -156,7 +181,8 @@ async function mountRafttaarPanel(order, refreshModal) {
             "Shipment booked"
           );
         }
-      ),
+      );
+    },
     refresh: async () => {
       if (await guarded(() => post("refresh"))) {
         toast("Refreshed from Rafttaar");
